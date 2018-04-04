@@ -1,0 +1,17 @@
+{
+  "name": "woolfdiscordbot",
+  "version": "1.0.0",
+  "description": "Discord Bot for GifYourGame gifs",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "gifyourgame",
+    "gyg"
+  ],
+  "author": "Saul Woolf",
+  "license": "ISC"
+}
