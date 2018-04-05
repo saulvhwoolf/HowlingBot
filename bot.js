@@ -26,11 +26,6 @@ fs.stat('./auth.json', function(err, stat) {
       configs.gfycatId = process.env.gfycatId;
       configs.gfycatToken = process.env.gfycatToken;
     }
-<<<<<<< HEAD
-=======
-    console.log(configs);
-
->>>>>>> 3a32a03a486411b08a5314a5cd31383128963178
     //Gyfcat authentication
     var gfycat = new Gfycat({clientId: configs.gfycatId, clientSecret: configs.gfycatToken});
     gfycat.authenticate((err, data) => {
