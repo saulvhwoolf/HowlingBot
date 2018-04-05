@@ -50,7 +50,9 @@ bot.on("ready", () => {
   for(var [key, value] of bot.guilds){
     console.log('\t' + value.name);
   }
-  bot.user.setActivity(`games with your heart.`);
+  bot.user.setActivity('games with your heart.');
+  bot.user.setUsername('HowlingBot');
+
 });
 
 //When bot joins a server
@@ -72,9 +74,6 @@ bot.on("message", async message => {
   //Ensure prefix is used in message
   if(message.content.indexOf(config.prefix) !== 0) return;
 
-  //TODO add and remove channel
-
-  console.log(message.content);
   var thisCh = message.channel.id;
   var channelIndex = config.channels.indexOf(thisCh);
   if(message.content == "!addHB"){
