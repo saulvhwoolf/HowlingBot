@@ -6,9 +6,38 @@ const assert = require('assert');
 const axios = require("axios");
 const fs = require('fs');
 
+var configs = {
+  botToken : "",
+  gfycatId : "",
+  gfycatToken : ""
+}
 
-const auth = require("./auth.json");
-// auth.token contains the discord bot's token
+fs.stat('./auth.json', function(err, stat) {
+    if(err == null) {
+      console.log('Being hosted locally, loading configs from file');
+      // auth.token contains the discord bot's token
+      const auth = require("./auth.json");
+      configs.botToken = auth.token;
+      configs.gfycatId = auth.gyfcat_id;
+      configs.gfycatToken = auth.gyfcat_secret;
+    } else if(err.code == 'ENOENT') {
+      console.log('Being hosted online, attempting to load configs');
+      configs.botToken = process.env.botToken;
+      configs.gfycatId = process.env.gfycatId;
+      configs.gfycatToken = process.env.gfycatToken;
+    }
+    console.log(configs);
+
+    //Gyfcat authentication
+    var gfycat = new Gfycat({clientId: configs.gfycatId, clientSecret: configs.gfycatToken});
+    gfycat.authenticate((err, data) => {
+      assert.equal(data.access_token, gfycat.token);
+    })
+    bot.login(configs.botToken);
+
+});
+
+
 
 const config = require("./config.json");
 // config.prefix contains the message prefix.
@@ -16,10 +45,6 @@ const config = require("./config.json");
 var filename = "./gifs.json";
 const gifsFile = require(filename);
 
-
-//Gyfcat authentication
-var gfycat = new Gfycat({clientId: auth.gyfcat_id, clientSecret: auth.gyfcat_secret});
-authenicateGyfcat();
 
 //On bot launch
 bot.on("ready", () => {
@@ -88,11 +113,6 @@ bot.on("message", async message => {
 });
 
 
-function authenicateGyfcat(){
-  gfycat.authenticate((err, data) => {
-    assert.equal(data.access_token, gfycat.token);
-  })
-}
 
 var testCursor = "";//"bm9uY2V8eyJnIjoia2luZGx5Y2FyaW5nZ2FyIiwiZCI6IjE1MjI5MDI3MzMiLCJmIjoiMSJ9";
 
@@ -150,5 +170,3 @@ function getRandomGif(channel){
 
   });
 }
-
-bot.login(auth.token);
