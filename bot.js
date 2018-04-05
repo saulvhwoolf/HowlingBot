@@ -3,6 +3,7 @@ const Discord = require("discord.js");
 const bot = new Discord.Client();
 const Gfycat = require('gfycat-sdk');
 const assert = require('assert');
+const axios = require("axios");
 const fs = require('fs');
 
 
@@ -62,100 +63,92 @@ bot.on("message", async message => {
     m.edit(`Pong! Latency is ${m.createdTimestamp - message.createdTimestamp}ms. API Latency is ${Math.round(bot.ping)}ms`);
   }
   if(command === "random") {
-    // Calculates ping between sending a message and editing it, giving a nice round-trip latency.
-    // The second ping is an average latency between the bot and the websocket server (one-way, not round-trip)
-    const m = await message.channel.send("Ping?");
-    m.edit(`Pong! Latency is ${m.createdTimestamp - message.createdTimestamp}ms. API Latency is ${Math.round(bot.ping)}ms`);
+    var ch = message.channel;
+    getRandomGif(ch);
   }
   if(command === "update") {
-    message.channel.send("Beginning update");
-    updateGifs(message.channel.id);
+    var numItems = 100;
+    if(args.length > 0){
+      var temp = parseInt(args[0]);
+      if(!Number.isInteger(temp)){
+        message.channel.send("First paramter needs to be an integer. You entered '"+  args[0] +"'");
+        return;
+      }else if(temp > 10000 || temp < 0){
+        message.channel.send("First parameter needs to be between 0 and 10000. You entered '"+  args[0] +"'");
+        return;
+      }else{
+        numItems = temp;
+      }
+    }
+
+    var ch = message.channel;
+    message.channel.send("Beginning update of " + numItems + " items.");
+    updateGifs(numItems, ch);
   }
 });
 
 
 function authenicateGyfcat(){
   gfycat.authenticate((err, data) => {
-    //Your app is now authenticated
     assert.equal(data.access_token, gfycat.token);
-    console.log('gyfcat token', gfycat.token);
   })
 }
 
-function getRandomGif(){
-  let options = {userId: "gifyourgame",};
-  gfycat.getUserDetails(options).then(data => {
-    var numGifs = data.publishedGfycats;
+var testCursor = "";//"bm9uY2V8eyJnIjoia2luZGx5Y2FyaW5nZ2FyIiwiZCI6IjE1MjI5MDI3MzMiLCJmIjoiMSJ9";
 
-    var rand = Math.floor(Math.random()*numGifs);
-    console.log("The council has selected gif #" + rand + " out of " + numGifs + " gifs.")
-
-    getGifAtIndex(rand);
-  });
-}
-
-function updateGifs(targetIndex, channelId){
-  updateGifsHelper('', 100, channelId);
+function updateGifs(numGifs, channelId){
+  console.log("Attempting to load " + numGifs + " gifs...")
+  updateGifsHelper(testCursor, numGifs, channelId);
 }
 
 var gifList = [];
-function updateGifsHelper(cursorIn, max, channelId){
-  console.log(cursorIn);
-  let options = {userId: 'gifyourgame', cursor: cursorIn,};
-  gfycat.userFeed(options).then(data => {
-    var gifs = data.gfycats;
-    gifs.map(function(d){
-      gifList.push(d.gfyId);
+function updateGifsHelper(cursor, max, channelId){
+  console.log("\t...Loaded " + gifList.length + " gifs");
 
+  var url = "https://api.gfycat.com/v1/users/gifyourgame/gfycats?cursor="+cursor;
+  axios
+    .get(url)
+    .then(response =>{
+      for(var gfycat of response.data.gfycats){
+        gifList.push(gfycat.gfyId);
+      }
+
+      if(gifList.length<max){
+        updateGifsHelper(response.data.cursor, max, channelId);
+      }else{
+        updateGifsFinally(channelId);
+      }
     })
-    if(gifList.length<max){
-      updateGifsHelper(data.cursor, max, channelId);
-    }else{
-      updateGifsFinally(channelId);
-    }
-  })
+    .catch(error=>{
+      console.log(error);
+    })
 }
-function updateGifsFinally(channelId){
-  console.log(filename);
 
+function updateGifsFinally(channel){
+  console.log("\tSuccessfully loaded " + gifList.length + " gifs");
+  // const channel = member.guild.channels.find('id', channelId);
   fs.writeFile(filename, JSON.stringify({gifList}), (err) =>{
     if(err){
       console.log("err", err);
       console.log("bot", bot);
-      // bot.send(channelId, "gifList failed to update");
+      channel.send("Update Failed...\n"+err);
+
       return;
     }
-    // bot.send(channelId, "gifList updated");
+    channel.send("Updated database now includes " + gifList.length + " entries.");
   })
 }
 
+function getRandomGif(channel){
+  fs.readFile(filename, 'utf8', function (err, data) {
+    if (err) throw err;
+    var list = JSON.parse(data).gifList;
+    var randomIndex = Math.floor(Math.random()*list.length)
+    var item = list[randomIndex];
+    channel.send("Check this out!\nhttps://gfycat.com/"+item);
 
-// function getGYGgifs(){
-//   let options = {
-//     count: 3,
-//     cursor: '',
-//   };
-//
-//   gfycat.userFeed(options).then(data => {
-//     var gifs = data.gfycats;
-//     // console.log(options.userId + " has " + gifs.length + " gifs");
-//     var ids = data.gfycats.map(function(d){
-//       return d.gfyId;
-//     })
-//     console.log(ids);
-//   })
-// }
-//
-// function getAllGifs(){
-//   let options = {
-//     count: 3,
-//     cursor: '',
-//   };
-//
-//   gfycat.trendingGifs(options).then(data => {
-//     var gifs = data.gfycats;
-//     console.log(data);
-//   })
-// }
+
+  });
+}
 
 bot.login(auth.token);
