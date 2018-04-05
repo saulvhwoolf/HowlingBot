@@ -37,7 +37,7 @@ fs.stat('./auth.json', function(err, stat) {
 
 
 
-const config = require("./config.json");
+var config = require("./config.json");
 // config.prefix contains the message prefix.
 
 var filename = "./gifs.json";
@@ -73,6 +73,27 @@ bot.on("message", async message => {
   if(message.content.indexOf(config.prefix) !== 0) return;
 
   //TODO add and remove channel
+
+  console.log(message.content);
+  var thisCh = message.channel.id;
+  var channelIndex = config.channels.indexOf(thisCh);
+  if(message.content == "!addHB"){
+    if(channelIndex == -1){
+      config.channels.push(thisCh);
+      updateConfig();
+      message.channel.send("I'm ready to go!");
+    }else{
+      message.channel.send("I am already active in this channel!");
+    }
+  }else if(message.content == "!removeHB"){
+    if(channelIndex >= 0){
+      config.channels.splice(channelIndex, 1);
+      updateConfig();
+      message.channel.send("I didn't want to be here anyways... :( :(");
+    }else{
+      message.channel.send("I wasn't active in this channel to begin with...");
+    }
+  }
 
   //Check that channel is correct
   if(config.channels.indexOf(message.channel.id)==-1) return;
@@ -148,7 +169,6 @@ function updateGifsFinally(channel){
   fs.writeFile(filename, JSON.stringify({gifList}), (err) =>{
     if(err){
       console.log("err", err);
-      console.log("bot", bot);
       channel.send("Update Failed...\n"+err);
 
       return;
@@ -164,7 +184,15 @@ function getRandomGif(channel){
     var randomIndex = Math.floor(Math.random()*list.length)
     var item = list[randomIndex];
     channel.send("Check this out!\nhttps://gfycat.com/"+item);
-
-
   });
+}
+
+function updateConfig(){
+  fs.writeFile("./config.json", JSON.stringify(config), (err) =>{
+    if(err){
+      console.log("Failed to update configs:\n\t", err);
+      return;
+    }
+    console.log("Successfully updated configs");
+  })
 }
