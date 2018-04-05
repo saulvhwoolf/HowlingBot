@@ -15,7 +15,19 @@
   "author": "Saul Woolf",
   "license": "ISC",
   "dependencies": {
-    "discord.io": "^2.5.3",
-    "winston": "^2.4.1"
+    "assert": "^1.4.1",
+    "discord.js": "^11.3.2",
+    "gfycat-sdk": "^1.4.13"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saulvhwoolf/HowlingBot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/saulvhwoolf/HowlingBot/issues"
+  },
+  "homepage": "https://github.com/saulvhwoolf/HowlingBot#readme",
+  "devDependencies": {
+    "firebase": "^4.12.1"
   }
 }
