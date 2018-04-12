@@ -1,0 +1,6 @@
+{
+  "addToChannel" : "addGYGBot",
+  "removeFromChannel" : "removeGYGBot",
+  "randomGif" : "random",
+  "topGif" : "top"
+}

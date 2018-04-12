@@ -1,0 +1,6 @@
+{
+  "addToChannel" : "addHB",
+  "removeFromChannel" : "removeHB",
+  "randomGif" : "random",
+  "topGif" : "top"
+}

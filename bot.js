@@ -1,10 +1,12 @@
-// Load up the discord.js library
+/******************             Imports              ******************/
 const Discord = require("discord.js");
-const bot = new Discord.Client();
 const Gfycat = require('gfycat-sdk');
 const assert = require('assert');
-const axios = require("axios");
 const fs = require('fs');
+const Parse = require('parse/node')
+const { addLike, removeLike, addDislike, removeDislike, getRandomGif, getTopLikedGifs }  = require('./src/utils/dbUtil.js');
+
+const bot = new Discord.Client();
 
 var configs = {
   botToken : "",
@@ -12,10 +14,18 @@ var configs = {
   gfycatToken : ""
 }
 
+var configFile = "./data/server/config.json";
+var commandsFile = "./data/commands.json";
+var config; //= require(configFile);
+var local = false;
+var auth = require("./auth.json");
+var commands = require(commandsFile);
 fs.stat('./auth.json', function(err, stat) {
     if(err == null) {
       console.log('Being hosted locally, loading configs from file');
-      // auth.token contains the discord bot's token
+      local = true;
+      configFile = "./data/local/config.json";
+
       const auth = require("./auth.json");
       configs.botToken = auth.token;
       configs.gfycatId = auth.gyfcat_id;
@@ -26,6 +36,10 @@ fs.stat('./auth.json', function(err, stat) {
       configs.gfycatId = process.env.gfycatId;
       configs.gfycatToken = process.env.gfycatToken;
     }
+
+    //Importing config file
+    config = require(configFile);
+
     //Gyfcat authentication
     var gfycat = new Gfycat({clientId: configs.gfycatId, clientSecret: configs.gfycatToken});
     gfycat.authenticate((err, data) => {
@@ -36,47 +50,65 @@ fs.stat('./auth.json', function(err, stat) {
 });
 
 
-
-var config = require("./config.json");
-// config.prefix contains the message prefix.
-
-var filename = "./gifs.json";
-const gifsFile = require(filename);
-
-
-//On bot launch
+/******************             Bot Stuff              ******************/
 bot.on("ready", () => {
   console.log(`Bot is up and running started, in ${bot.guilds.size} servers:`);
   for(var [key, value] of bot.guilds){
-    console.log('\t' + value.name);
+    console.log('...\t' + value.name);
   }
-  bot.user.setActivity('games with your heart.');
-  bot.user.setUsername('HowlingBot');
-
 });
 
-//When bot joins a server
+
 bot.on("guildCreate", guild => {
-  // This event triggers when the bot joins a guild.
   console.log(`Bot has been added to server: ${guild.name} (id: ${guild.id})`);
 });
 
 bot.on("guildDelete", guild => {
-  // this event triggers when the bot is removed from a guild.
   console.log(`I have been removed from: ${guild.name} (id: ${guild.id})`);
 });
 
 
+/******************             Reactions              ******************/
+
+bot.on('messageReactionAdd', (reaction, user) => {
+  var msg = reaction.message.content;
+  if(msg.indexOf("https://gfycat.com/")!=0 || user.id == "431226194411651082"){return;}
+  var gifId = msg.substring("https://gfycat.com/".length,msg.length)
+
+  // console.log(user.username + " reacted " + reaction.emoji.name + " to " + gifId);
+  if(reaction.emoji.name === "👍"){
+    addLike(user.id, gifId);
+  } else if(reaction.emoji.name === "👎"){
+    addDislike(user.id, gifId);
+  }
+
+});
+
+bot.on('messageReactionRemove', (reaction, user) => {
+  var msg = reaction.message.content;
+  if(msg.indexOf("https://gfycat.com/")!=0 || user.id == "431226194411651082"){return;}
+  var gifId = msg.substring("https://gfycat.com/".length,msg.length)
+
+  // console.log(user.username + " removed reaction " + reaction.emoji.name + " to " + gifId);
+  if(reaction.emoji.name === "👍"){
+    removeLike(user.id, gifId);
+  } else if(reaction.emoji.name === "👎"){
+    removeDislike(user.id, gifId);
+  }
+});
+
+/******************             Messages              ******************/
 bot.on("message", async message => {
-  //Ignore other bots
-  if(message.author.bot) return;
+  if(message.content.indexOf("https://gfycat.com/") == 0){
+    addReactions(message);
+  }
 
-  //Ensure prefix is used in message
-  if(message.content.indexOf(config.prefix) !== 0) return;
+  if(message.content.indexOf(config.prefix) !== 0) return;  //Ensure prefix is used in message
 
-  var thisCh = message.channel.id;
-  var channelIndex = config.channels.indexOf(thisCh);
-  if(message.content == "!addHB"){
+  var channel = message.channel.id;
+  var channelIndex = config.channels.indexOf(channel);
+
+  if(message.content == config.prefix+commands.addToChannel){
     if(channelIndex == -1){
       config.channels.push(thisCh);
       updateConfig();
@@ -84,7 +116,8 @@ bot.on("message", async message => {
     }else{
       message.channel.send("I am already active in this channel!");
     }
-  }else if(message.content == "!removeHB"){
+  }
+  else if(message.content == config.prefix+commands.removeFromChannel){
     if(channelIndex >= 0){
       config.channels.splice(channelIndex, 1);
       updateConfig();
@@ -99,95 +132,50 @@ bot.on("message", async message => {
 
   const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
-
-
-  if(command === "ping") {
-    const m = await message.channel.send("Ping?");
-    m.edit(`Pong! Latency is ${m.createdTimestamp - message.createdTimestamp}ms. API Latency is ${Math.round(bot.ping)}ms`);
+/************    MESSAGES     *********************/
+  if(command === commands.randomGif) {
+    Parse.Promise.when(getRandomGif()).then(function(gif){
+      console.log("... \t", gif.gif);
+      var user = bot.users.get(gif.user);
+      var name = user.username+"#"+user.discriminator;
+      message.channel.send("***" + name + "'s*** goal, with a score of **"+gif.score+"**");
+      message.channel.send("https://gfycat.com/"+gif.gif);
+    });
   }
-  if(command === "random") {
-    var ch = message.channel;
-    getRandomGif(ch);
-  }
-  if(command === "update") {
-    var numItems = 100;
-    if(args.length > 0){
-      var temp = parseInt(args[0]);
-      if(!Number.isInteger(temp)){
-        message.channel.send("First paramter needs to be an integer. You entered '"+  args[0] +"'");
-        return;
-      }else if(temp > 10000 || temp < 0){
-        message.channel.send("First parameter needs to be between 0 and 10000. You entered '"+  args[0] +"'");
-        return;
-      }else{
-        numItems = temp;
+
+  if(command === commands.topGif) {
+    var num = 1;
+    if(args.length > 0 && Number.isInteger(parseInt(args[0]))) {
+      var val  = parseInt(args[0]);
+      if(val > 0 && val < 100){
+        num = val;
       }
     }
 
-    var ch = message.channel;
-    message.channel.send("Beginning update of " + numItems + " items.");
-    updateGifs(numItems, ch);
+    Parse.Promise.when(getTopLikedGifs(num)).then(function(gif){
+      if(!gif.success){
+        console.log("... There arent that many rated gifs");
+        message.channel.send("There arent that many voted gifs!");
+      }else{
+        console.log("... \t", gif.gif);
+        var user = bot.users.get(gif.user);
+        var name = user.username+"#"+user.discriminator;
+        message.channel.send("Currently, ***" + name + "*** holds the **Rank " + num + "** gif with a score of **"+gif.score+"**");
+        message.channel.send("https://gfycat.com/"+gif.gif);
+      }
+    });
   }
 });
 
 
-
-var testCursor = "";//"bm9uY2V8eyJnIjoia2luZGx5Y2FyaW5nZ2FyIiwiZCI6IjE1MjI5MDI3MzMiLCJmIjoiMSJ9";
-
-function updateGifs(numGifs, channelId){
-  console.log("Attempting to load " + numGifs + " gifs...")
-  updateGifsHelper(testCursor, numGifs, channelId);
-}
-
-var gifList = [];
-function updateGifsHelper(cursor, max, channelId){
-  console.log("\t...Loaded " + gifList.length + " gifs");
-
-  var url = "https://api.gfycat.com/v1/users/gifyourgame/gfycats?cursor="+cursor;
-  axios
-    .get(url)
-    .then(response =>{
-      for(var gfycat of response.data.gfycats){
-        gifList.push(gfycat.gfyId);
-      }
-
-      if(gifList.length<max){
-        updateGifsHelper(response.data.cursor, max, channelId);
-      }else{
-        updateGifsFinally(channelId);
-      }
-    })
-    .catch(error=>{
-      console.log(error);
-    })
-}
-
-function updateGifsFinally(channel){
-  console.log("\tSuccessfully loaded " + gifList.length + " gifs");
-  // const channel = member.guild.channels.find('id', channelId);
-  fs.writeFile(filename, JSON.stringify({gifList}), (err) =>{
-    if(err){
-      console.log("err", err);
-      channel.send("Update Failed...\n"+err);
-
-      return;
-    }
-    channel.send("Updated database now includes " + gifList.length + " entries.");
-  })
-}
-
-function getRandomGif(channel){
-  fs.readFile(filename, 'utf8', function (err, data) {
-    if (err) throw err;
-    var list = JSON.parse(data).gifList;
-    var randomIndex = Math.floor(Math.random()*list.length)
-    var item = list[randomIndex];
-    channel.send("Check this out!\nhttps://gfycat.com/"+item);
-  });
+/******************             Helper Functions              ******************/
+async function addReactions(message){
+  await message.react('👍');
+  await message.react('👎');
 }
 
 function updateConfig(){
-  fs.writeFile("./config.json", JSON.stringify(config), (err) =>{
+  fs.writeFile(configFile, JSON.stringify(config), (err) =>{
     if(err){
       console.log("Failed to update configs:\n\t", err);
       return;

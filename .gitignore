@@ -1,3 +1,6 @@
 auth.json
 service-account.json
 node_modules
+theirBot.js
+data/local
+.env
