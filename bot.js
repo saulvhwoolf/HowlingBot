@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 /******************             Imports              ******************/
 const Discord = require("discord.js");
 const Gfycat = require('gfycat-sdk');
@@ -19,25 +21,21 @@ var commandsFile = "./configs/commands.json";
 var config; //= require(configFile);
 var local = false;
 var commands = require(commandsFile);
-fs.stat('./auth.json', function(err, stat) {
+fs.stat('./configs/local/config.json', function(err, stat) {
     if(err == null) {
       console.log('Being hosted locally, loading configs from file');
       local = true;
       configFile = "./configs/local/config.json";
-
-      const auth = require("./auth.json");
-      configs.botToken = auth.token;
-      configs.gfycatId = auth.gyfcat_id;
-      configs.gfycatToken = auth.gyfcat_secret;
     } else if(err.code == 'ENOENT') {
       console.log('Being hosted online, attempting to load configs');
-      configs.botToken = process.env.botToken;
-      configs.gfycatId = process.env.gfycatId;
-      configs.gfycatToken = process.env.gfycatToken;
     }
+    configs.botToken = process.env.botToken;
+    configs.gfycatId = process.env.gfycatId;
+    configs.gfycatToken = process.env.gfycatToken;
 
     //Importing config file
     config = require(configFile);
+    // console.log(config);
 
     //Gyfcat authentication
     var gfycat = new Gfycat({clientId: configs.gfycatId, clientSecret: configs.gfycatToken});
