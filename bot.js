@@ -18,7 +18,6 @@ var configFile = "./configs/server/config.json";
 var commandsFile = "./configs/commands.json";
 var config; //= require(configFile);
 var local = false;
-var auth = require("./auth.json");
 var commands = require(commandsFile);
 fs.stat('./auth.json', function(err, stat) {
     if(err == null) {
