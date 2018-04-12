@@ -14,8 +14,8 @@ var configs = {
   gfycatToken : ""
 }
 
-var configFile = "./data/server/config.json";
-var commandsFile = "./data/commands.json";
+var configFile = "./configs/server/config.json";
+var commandsFile = "./configs/commands.json";
 var config; //= require(configFile);
 var local = false;
 var auth = require("./auth.json");
@@ -24,7 +24,7 @@ fs.stat('./auth.json', function(err, stat) {
     if(err == null) {
       console.log('Being hosted locally, loading configs from file');
       local = true;
-      configFile = "./data/local/config.json";
+      configFile = "./configs/local/config.json";
 
       const auth = require("./auth.json");
       configs.botToken = auth.token;
