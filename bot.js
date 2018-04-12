@@ -110,7 +110,7 @@ bot.on("message", async message => {
 
   if(message.content == config.prefix+commands.addToChannel){
     if(channelIndex == -1){
-      config.channels.push(thisCh);
+      config.channels.push(channel);
       updateConfig();
       message.channel.send("I'm ready to go!");
     }else{
