@@ -278,31 +278,31 @@ function stringifyGif(gif){
 }
 
 function setupLeaderboard(channel){
-  getTopLikedGifs(10).then(function(gifs){
-    channel.bulkDelete(50);
-    for(var i = 0; i < gifs.length; i++){
-      var gif = gifs[i];
-      // console.log(("Gif#"+i),gif);
-      channel.send("\n***#"+(i+1)+"***");
-      var a = stringifyGif(gifs[i]);
-      channel.send(a);
-    }
-  })
-  var leaderBoardUpdater = Schedule.scheduleJob('*/5 * * * *', function(){
-    console.log("Updating Leaderboard for channel", channel.id);
-    channel.send("UPDATING");
-    getTopLikedGifs(10).then(function(gifs){
-      channel.bulkDelete(50);
-      for(var i = 0; i < gifs.length; i++){
-        var gif = gifs[i];
-        // console.log(("Gif#"+i),gif);
-        channel.send("\n***#"+(i+1)+"***");
-        var a = stringifyGif(gifs[i]);
-        channel.send(a);
-      }
-    })
-  });
-  scheduledJobs[channel.id] = (leaderBoardUpdater);
+  // getTopLikedGifs(10).then(function(gifs){
+  //   channel.bulkDelete(50);
+  //   for(var i = 0; i < gifs.length; i++){
+  //     var gif = gifs[i];
+  //     // console.log(("Gif#"+i),gif);
+  //     channel.send("\n***#"+(i+1)+"***");
+  //     var a = stringifyGif(gifs[i]);
+  //     channel.send(a);
+  //   }
+  // })
+  // var leaderBoardUpdater = Schedule.scheduleJob('*/5 * * * *', function(){
+  //   console.log("Updating Leaderboard for channel", channel.id);
+  //   channel.send("UPDATING");
+  //   getTopLikedGifs(10).then(function(gifs){
+  //     channel.bulkDelete(50);
+  //     for(var i = 0; i < gifs.length; i++){
+  //       var gif = gifs[i];
+  //       // console.log(("Gif#"+i),gif);
+  //       channel.send("\n***#"+(i+1)+"***");
+  //       var a = stringifyGif(gifs[i]);
+  //       channel.send(a);
+  //     }
+  //   })
+  // });
+  // scheduledJobs[channel.id] = (leaderBoardUpdater);
 }
 function removeLeaderboard(channel){
   console.log(scheduledJobs);
