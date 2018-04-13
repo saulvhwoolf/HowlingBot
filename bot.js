@@ -7,7 +7,7 @@ const assert = require('assert');
 const fs = require('fs');
 const URL = require('url');
 const Parse = require('parse/node')
-const { addLike, removeLike, addDislike, removeDislike, getRandomGif, getTopLikedGifs, isGYG }  = require('./src/utils/dbUtil.js');
+const { addLike, removeLike, addDislike, removeDislike, getRandomGif, getGifById, getTopLikedGifs, isGYG }  = require('./src/utils/dbUtil.js');
 
 const bot = new Discord.Client();
 
@@ -71,31 +71,36 @@ bot.on("guildDelete", guild => {
 bot.on('messageReactionAdd', (reaction, user) => {
   var msg = reaction.message.content;
   var gfyName = getGfyPath(msg);
-  if(!isGYG(gfyName)){
+  if(!isGYG(gfyName) || user.id == bot.user.id)
     return;
-  }
-  // console.log(user.username + " reacted " + reaction.emoji.name + " to " + gifId);
-  if(reaction.emoji.name === "👍"){
-    addLike(user.id, gfyName);
-  } else if(reaction.emoji.name === "👎"){
-    addDislike(user.id, gfyName);
-  }
 
+  if(reaction.emoji.name === "👍")
+    addLike(user.id, gfyName).then(function(){
+      updateNumbersInMessage(reaction.message);
+    });
+  else if(reaction.emoji.name === "👎")
+    addDislike(user.id, gfyName).then(function(){
+      updateNumbersInMessage(reaction.message);
+    });
+  // else if(reaction.emoji.name === "🔄")
+  //   updateNumbersInMessage(reaction.message);
 });
 
 bot.on('messageReactionRemove', (reaction, user) => {
   var msg = reaction.message.content;
   var gfyName = getGfyPath(msg);
-  if(!isGYG(gfyName)){
+  if(!isGYG(gfyName) || user.id == bot.user.id)
     return;
-  }
 
   // console.log(user.username + " removed reaction " + reaction.emoji.name + " to " + gifId);
-  if(reaction.emoji.name === "👍"){
-    removeLike(user.id, gfyName);
-  } else if(reaction.emoji.name === "👎"){
-    removeDislike(user.id, gfyName);
-  }
+  if(reaction.emoji.name === "👍")
+    removeLike(user.id, gfyName).then(function(){
+      updateNumbersInMessage(reaction.message);
+    });
+  else if(reaction.emoji.name === "👎")
+    removeDislike(user.id, gfyName).then(function(){
+      updateNumbersInMessage(reaction.message);
+    });
 });
 
 /******************             Messages              ******************/
@@ -140,11 +145,12 @@ bot.on("message", async message => {
       console.log("... \t", gif.gif);
       var user = bot.users.get(gif.user);
       var name = user.username+"#"+user.discriminator;
-      message.channel.send("***" + name + "'s*** goal, with a score of **"+gif.score+"**");
-      message.channel.send("https://gfycat.com/"+gif.gif);
+      message.channel.send("***" + name + "'s*** goal, with a score of **"+gif.score+"** https://gfycat.com/"+gif.gif);
     });
   }
-
+  if(command === "update") {
+    updateNumbers(message.channel);
+  }
   if(command === commands.topGif) {
     var num = 1;
     if(args.length > 0 && Number.isInteger(parseInt(args[0]))) {
@@ -162,8 +168,11 @@ bot.on("message", async message => {
         console.log("... \t", gif.gif);
         var user = bot.users.get(gif.user);
         var name = user.username+"#"+user.discriminator;
-        message.channel.send("Currently, ***" + name + "*** holds the **Rank " + num + "** gif with a score of **"+gif.score+"**");
-        message.channel.send("https://gfycat.com/"+gif.gif);
+        var newStr = "***" + name + "'s*** goal, with a score of **"+gif.score+"** https://gfycat.com/"+gif.gif;
+        message.channel.send("Current #" + num+" spot:");
+        message.channel.send(newStr);
+        // message.channel.send("Currently, ***" + name + "*** holds the **Rank " + num + "** gif with a score of **"+gif.score+"**");
+        // message.channel.send("https://gfycat.com/"+gif.gif);
       }
     });
   }
@@ -174,6 +183,7 @@ bot.on("message", async message => {
 async function addReactions(message){
   await message.react('👍');
   await message.react('👎');
+
 }
 
 function getGfyPath(message) {
@@ -190,6 +200,27 @@ function getGfyPath(message) {
     }
   }
   return undefined;
+}
+
+function updateNumbersInChannel(channel){
+  // channel.
+}
+function updateNumbersInMessage(message){
+  console.log("Update Message")
+  if(bot.user.id == message.author.id){
+    var gfyId = getGfyPath(message.content);
+
+    Parse.Promise.when(getGifById(gfyId)).then(function(gif){
+      console.log("... \t", gif.gif);
+      var user = bot.users.get(gif.user);
+      var name = user.username+"#"+user.discriminator;
+      var newStr = "***" + name + "'s*** goal, with a score of **"+gif.score+"** https://gfycat.com/"+gif.gif;
+      message.edit(newStr);
+    });
+  }else{
+    console.log("...\tThat message is by another author")
+  }
+
 }
 
 function updateConfig(){

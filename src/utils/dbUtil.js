@@ -13,29 +13,34 @@ const User = Parse.Object.extend("User");
 
 exports.addLike = function(userId, gifId){
   console.log("Adding like "+ userId + " to "+gifId);
-  updateArray(gifId, userId, "likesArray", "add");
+  return updateArray(gifId, userId, "likesArray", "add").then(function(){
+    return;
+  });
 }
 
 exports.removeLike = function(userId, gifId){
   console.log("Removing like "+ userId + " to "+gifId);
-  updateArray(gifId, userId, "likesArray", "remove");
+  return updateArray(gifId, userId, "likesArray", "remove").then(function(){
+    return;
+  });
 }
 
 exports.addDislike = function(userId, gifId){
   console.log("Adding dislike "+ userId + " to "+gifId);
-  updateArray(gifId, userId, "dislikesArray", "add");
+  return updateArray(gifId, userId, "dislikesArray", "add").then(function(){
+    return;
+  });
 }
 
 exports.removeDislike = function(userId, gifId){
   console.log("Removing dislike "+ userId + " to "+gifId);
-  updateArray(gifId, userId, "dislikesArray", "remove");
+  return updateArray(gifId, userId, "dislikesArray", "remove").then(function(){
+    return;
+  });
 }
 
 function updateArray(gifId, discordId, arrayName, updateType){
   return gifByID(gifId).then(function(gif){
-    console.log("...likes", gif.get("likesArray"));
-    console.log("...dislikes", gif.get("dislikesArray"));
-
     var theArray = gif.get(arrayName);
     if(!gif.get(arrayName)){
       gif.set(arrayName, []);
@@ -54,7 +59,7 @@ function updateArray(gifId, discordId, arrayName, updateType){
     gif.set("score", likeScore)
 
     gif.save(null, {useMasterKey:true})
-    console.log("===>", gif.get(arrayName));
+    console.log("...\t"+arrayName+"->", gif.get(arrayName));
     return gif;
   })
 }
@@ -96,11 +101,18 @@ function gifByIdex(index){
 
 function gifByID(id){
   var query = new Parse.Query(Clip);
-  // query.include('user');
+  query.include('user');
   query.equalTo("gif", id);
   return query.first({ useMasterKey: true }).then(function(gif){
     return gif;
   })
+}
+
+exports.getGifById = function(id){
+  return gifByID(id).then(function(gif){
+    var agif = getDataFromGif(gif)
+    return agif;
+  });
 }
 
 exports.getTopLikedGifs = function(num){
