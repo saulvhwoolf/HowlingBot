@@ -146,6 +146,7 @@ bot.on("message", async message => {
     if(lbChannelIndex == -1){
       config.leaderboardChannels.push(channel);
       updateConfig();
+      setupLeaderboard(channel);
       message.channel.send("This channel is now a leaderboard channel. Every 5 minutes, its contents get deleted and recreated.");
       message.channel.send("If this was a mistake, please use the command: "+config.prefix+commands.removeLeaderboard);
 
@@ -157,6 +158,8 @@ bot.on("message", async message => {
     if(lbChannelIndex >= 0){
       config.leaderboardChannels.splice(lbChannelIndex, 1);
       updateConfig();
+      removeLeaderboard(channel);
+
       message.channel.send("I didn't want to be here anyways... :( :(");
     }else{
       message.channel.send("I wasn't active in this channel to begin with...");
@@ -275,7 +278,17 @@ function stringifyGif(gif){
 }
 
 function setupLeaderboard(channel){
-  var leaderBoardUpdater = Schedule.scheduleJob('*/1 * * * *', function(){
+  getTopLikedGifs(10).then(function(gifs){
+    channel.bulkDelete(50);
+    for(var i = 0; i < gifs.length; i++){
+      var gif = gifs[i];
+      // console.log(("Gif#"+i),gif);
+      channel.send("\n***#"+(i+1)+"***");
+      var a = stringifyGif(gifs[i]);
+      channel.send(a);
+    }
+  })
+  var leaderBoardUpdater = Schedule.scheduleJob('*/5 * * * *', function(){
     console.log("Updating Leaderboard for channel", channel.id);
     channel.send("UPDATING");
     getTopLikedGifs(10).then(function(gifs){
@@ -290,4 +303,10 @@ function setupLeaderboard(channel){
     })
   });
   scheduledJobs[channel.id] = (leaderBoardUpdater);
+}
+function removeLeaderboard(channel){
+  console.log(scheduledJobs);
+  scheduledJobs[channel.id].cancel();
+  scheduledJobs[channel.id] = undefined;
+  console.log(scheduledJobs);
 }
