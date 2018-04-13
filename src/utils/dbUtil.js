@@ -32,7 +32,6 @@ exports.removeDislike = function(userId, gifId){
 }
 
 function updateArray(gifId, discordId, arrayName, updateType){
-  console.log(gifId);
   return gifByID(gifId).then(function(gif){
     console.log("...likes", gif.get("likesArray"));
     console.log("...dislikes", gif.get("dislikesArray"));
@@ -95,10 +94,9 @@ function gifByIdex(index){
   })
 }
 
-
 function gifByID(id){
   var query = new Parse.Query(Clip);
-  query.include('user');
+  // query.include('user');
   query.equalTo("gif", id);
   return query.first({ useMasterKey: true }).then(function(gif){
     return gif;
@@ -120,6 +118,14 @@ exports.getTopLikedGifs = function(num){
     }else{
       return getDataFromGif(gifs[0]);
     }
+  })
+}
+
+exports.isGYG = function(id){
+  if(!id)
+    return undefined;
+  return gifByID(id).then(function(gif){
+    return !!gif;
   })
 }
 

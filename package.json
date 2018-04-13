@@ -20,7 +20,8 @@
     "discord.js": "^11.3.2",
     "dotenv": "^5.0.1",
     "gfycat-sdk": "^1.4.13",
-    "parse": "^1.11.1"
+    "parse": "^1.11.1",
+    "url-exists": "^1.0.3"
   },
   "repository": {
     "type": "git",

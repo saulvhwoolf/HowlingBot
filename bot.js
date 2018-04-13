@@ -5,8 +5,9 @@ const Discord = require("discord.js");
 const Gfycat = require('gfycat-sdk');
 const assert = require('assert');
 const fs = require('fs');
+const URL = require('url');
 const Parse = require('parse/node')
-const { addLike, removeLike, addDislike, removeDislike, getRandomGif, getTopLikedGifs }  = require('./src/utils/dbUtil.js');
+const { addLike, removeLike, addDislike, removeDislike, getRandomGif, getTopLikedGifs, isGYG }  = require('./src/utils/dbUtil.js');
 
 const bot = new Discord.Client();
 
@@ -69,34 +70,38 @@ bot.on("guildDelete", guild => {
 
 bot.on('messageReactionAdd', (reaction, user) => {
   var msg = reaction.message.content;
-  if(msg.indexOf("https://gfycat.com/")!=0 || user.id == "431226194411651082"){return;}
-  var gifId = msg.substring("https://gfycat.com/".length,msg.length)
-
+  var gfyName = getGfyPath(msg);
+  if(!isGYG(gfyName)){
+    return;
+  }
   // console.log(user.username + " reacted " + reaction.emoji.name + " to " + gifId);
   if(reaction.emoji.name === "👍"){
-    addLike(user.id, gifId);
+    addLike(user.id, gfyName);
   } else if(reaction.emoji.name === "👎"){
-    addDislike(user.id, gifId);
+    addDislike(user.id, gfyName);
   }
 
 });
 
 bot.on('messageReactionRemove', (reaction, user) => {
   var msg = reaction.message.content;
-  if(msg.indexOf("https://gfycat.com/")!=0 || user.id == "431226194411651082"){return;}
-  var gifId = msg.substring("https://gfycat.com/".length,msg.length)
+  var gfyName = getGfyPath(msg);
+  if(!isGYG(gfyName)){
+    return;
+  }
 
   // console.log(user.username + " removed reaction " + reaction.emoji.name + " to " + gifId);
   if(reaction.emoji.name === "👍"){
-    removeLike(user.id, gifId);
+    removeLike(user.id, gfyName);
   } else if(reaction.emoji.name === "👎"){
-    removeDislike(user.id, gifId);
+    removeDislike(user.id, gfyName);
   }
 });
 
 /******************             Messages              ******************/
 bot.on("message", async message => {
-  if(message.content.indexOf("https://gfycat.com/") == 0){
+  var gfyName = getGfyPath(message.content);
+  if(isGYG(gfyName)){
     addReactions(message);
   }
 
@@ -169,6 +174,22 @@ bot.on("message", async message => {
 async function addReactions(message){
   await message.react('👍');
   await message.react('👎');
+}
+
+function getGfyPath(message) {
+  var arr = message.split(' ');
+  for(var i = arr.length; i-- > 0; ){
+    var str = arr[i];
+    var url = URL.parse(str);
+    if(url.host){
+      if(url.hostname=="gfycat.com")
+        return url.pathname.substring(1);
+      else{
+        return undefined;
+      }
+    }
+  }
+  return undefined;
 }
 
 function updateConfig(){
