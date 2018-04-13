@@ -2,5 +2,7 @@
   "addToChannel" : "addGYGBot",
   "removeFromChannel" : "removeGYGBot",
   "randomGif" : "random",
-  "topGif" : "top"
+  "topGif" : "top",
+  "addLeaderboard":"addGYGLeaderboard",
+  "removeLeaderboard":"removeGYGLeaderboard"
 }

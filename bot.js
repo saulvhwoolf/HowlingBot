@@ -6,8 +6,9 @@ const Gfycat = require('gfycat-sdk');
 const assert = require('assert');
 const fs = require('fs');
 const URL = require('url');
-const Parse = require('parse/node')
-const { addLike, removeLike, addDislike, removeDislike, getRandomGif, getGifById, getTopLikedGifs, isGYG }  = require('./src/utils/dbUtil.js');
+const Parse = require('parse/node');
+const Schedule = require('node-schedule');
+const { addLike, removeLike, addDislike, removeDislike, getRandomGif, getGifById, getTopLikedGif, getTopLikedGifs, isGYG }  = require('./src/utils/dbUtil.js');
 
 const bot = new Discord.Client();
 
@@ -47,12 +48,19 @@ fs.stat('./configs/local/config.json', function(err, stat) {
 
 });
 
+/******************             Variable              ******************/
+
+var scheduledJobs = {};
 
 /******************             Bot Stuff              ******************/
 bot.on("ready", () => {
   console.log(`Bot is up and running started, in ${bot.guilds.size} servers:`);
   for(var [key, value] of bot.guilds){
     console.log('...\t' + value.name);
+  }
+  for(var channelId of config.leaderboardChannels){
+    console.log("Setting up Scheduler for",channelId);
+    setupLeaderboard(bot.channels.get(channelId));
   }
 });
 
@@ -114,6 +122,8 @@ bot.on("message", async message => {
 
   var channel = message.channel.id;
   var channelIndex = config.channels.indexOf(channel);
+  var lbChannelIndex = config.leaderboardChannels.indexOf(channel);
+
 
   if(message.content == config.prefix+commands.addToChannel){
     if(channelIndex == -1){
@@ -132,25 +142,56 @@ bot.on("message", async message => {
     }else{
       message.channel.send("I wasn't active in this channel to begin with...");
     }
+  } else if(message.content == config.prefix+commands.addLeaderboard){
+    if(lbChannelIndex == -1){
+      config.leaderboardChannels.push(channel);
+      updateConfig();
+      message.channel.send("This channel is now a leaderboard channel. Every 5 minutes, its contents get deleted and recreated.");
+      message.channel.send("If this was a mistake, please use the command: "+config.prefix+commands.removeLeaderboard);
+
+    }else{
+      message.channel.send("This is already a leaderboard channel.");
+    }
+  }
+  else if(message.content == config.prefix+commands.removeLeaderboard){
+    if(lbChannelIndex >= 0){
+      config.leaderboardChannels.splice(lbChannelIndex, 1);
+      updateConfig();
+      message.channel.send("I didn't want to be here anyways... :( :(");
+    }else{
+      message.channel.send("I wasn't active in this channel to begin with...");
+    }
   }
 
   //Check that channel is correct
-  if(config.channels.indexOf(message.channel.id)==-1) return;
+  if(config.channels.indexOf(message.channel.id)!=-1) messageResponse(message);
 
+  if(config.leaderboardChannels.indexOf(message.channel.id)!=-1) leaderboardsMessage(message);
+});
+
+
+/************    MESSAGES     *********************/
+
+function leaderboardsMessage(message){
+  // const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
+  // const command = args.shift().toLowerCase();
+  // if(command === "update") {
+  //
+  // }
+}
+
+function messageResponse(message){
   const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
-/************    MESSAGES     *********************/
   if(command === commands.randomGif) {
     Parse.Promise.when(getRandomGif()).then(function(gif){
       console.log("... \t", gif.gif);
       var user = bot.users.get(gif.user);
       var name = user.username+"#"+user.discriminator;
-      message.channel.send("***" + name + "'s*** goal, with a score of **"+gif.score+"** https://gfycat.com/"+gif.gif);
+      message.channel.send(stringifyGif(gif));
     });
   }
-  if(command === "update") {
-    updateNumbers(message.channel);
-  }
+
   if(command === commands.topGif) {
     var num = 1;
     if(args.length > 0 && Number.isInteger(parseInt(args[0]))) {
@@ -160,23 +201,18 @@ bot.on("message", async message => {
       }
     }
 
-    Parse.Promise.when(getTopLikedGifs(num)).then(function(gif){
+    Parse.Promise.when(getTopLikedGif(num)).then(function(gif){
       if(!gif.success){
         console.log("... There arent that many rated gifs");
         message.channel.send("There arent that many voted gifs!");
       }else{
         console.log("... \t", gif.gif);
-        var user = bot.users.get(gif.user);
-        var name = user.username+"#"+user.discriminator;
-        var newStr = "***" + name + "'s*** goal, with a score of **"+gif.score+"** https://gfycat.com/"+gif.gif;
         message.channel.send("Current #" + num+" spot:");
-        message.channel.send(newStr);
-        // message.channel.send("Currently, ***" + name + "*** holds the **Rank " + num + "** gif with a score of **"+gif.score+"**");
-        // message.channel.send("https://gfycat.com/"+gif.gif);
+        message.channel.send(stringifyGif(gif));
       }
     });
   }
-});
+}
 
 
 /******************             Helper Functions              ******************/
@@ -212,10 +248,7 @@ function updateNumbersInMessage(message){
 
     Parse.Promise.when(getGifById(gfyId)).then(function(gif){
       console.log("... \t", gif.gif);
-      var user = bot.users.get(gif.user);
-      var name = user.username+"#"+user.discriminator;
-      var newStr = "***" + name + "'s*** goal, with a score of **"+gif.score+"** https://gfycat.com/"+gif.gif;
-      message.edit(newStr);
+      message.edit(stringifyGif(gif));
     });
   }else{
     console.log("...\tThat message is by another author")
@@ -231,4 +264,30 @@ function updateConfig(){
     }
     console.log("Successfully updated configs");
   })
+}
+
+function stringifyGif(gif){
+  var aStr = "";
+  var user = bot.users.get(gif.user);
+  var name = user.username+"#"+user.discriminator;
+  aStr = "***" + name + "'s*** goal, with a score of **"+gif.score+"** https://gfycat.com/"+gif.gif;
+  return aStr;
+}
+
+function setupLeaderboard(channel){
+  var leaderBoardUpdater = Schedule.scheduleJob('*/1 * * * *', function(){
+    console.log("Updating Leaderboard for channel", channel.id);
+    channel.send("UPDATING");
+    getTopLikedGifs(10).then(function(gifs){
+      channel.bulkDelete(50);
+      for(var i = 0; i < gifs.length; i++){
+        var gif = gifs[i];
+        // console.log(("Gif#"+i),gif);
+        channel.send("\n***#"+(i+1)+"***");
+        var a = stringifyGif(gifs[i]);
+        channel.send(a);
+      }
+    })
+  });
+  scheduledJobs[channel.id] = (leaderBoardUpdater);
 }

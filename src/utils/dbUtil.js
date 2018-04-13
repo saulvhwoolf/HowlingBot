@@ -115,7 +115,7 @@ exports.getGifById = function(id){
   });
 }
 
-exports.getTopLikedGifs = function(num){
+exports.getTopLikedGif = function(num){
   console.log("Getting top-rated #",num)
   var query = new Parse.Query(Clip);
   query.include('user');
@@ -129,6 +129,26 @@ exports.getTopLikedGifs = function(num){
       return {  success:false }
     }else{
       return getDataFromGif(gifs[0]);
+    }
+  })
+}
+
+exports.getTopLikedGifs = function(num){
+  console.log("Getting top-rated list of ",num)
+  var query = new Parse.Query(Clip);
+  query.include('user');
+  query.exists("score")  // query.skip(40)
+  query.descending("score")  // query.skip(40)
+  query.equalTo("type", "goal")
+  query.limit(num)
+  return query.find({useMasterKey:true})
+  .then(function(gifs){
+    if(gifs.length==0){
+      return {  success:false }
+    }else{
+      return gifs.map(function(gif){
+        return getDataFromGif(gif);
+      })//getDataFromGif(gifs[0]);
     }
   })
 }
