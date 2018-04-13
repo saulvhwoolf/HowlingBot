@@ -84,11 +84,11 @@ bot.on('messageReactionAdd', (reaction, user) => {
 
   if(reaction.emoji.name === "👍")
     addLike(user.id, gfyName).then(function(){
-      updateNumbersInMessage(reaction.message);
+      updateNumbersInChannel(reaction.message);
     });
   else if(reaction.emoji.name === "👎")
     addDislike(user.id, gfyName).then(function(){
-      updateNumbersInMessage(reaction.message);
+      updateNumbersInChannel(reaction.message);
     });
   // else if(reaction.emoji.name === "🔄")
   //   updateNumbersInMessage(reaction.message);
@@ -97,17 +97,19 @@ bot.on('messageReactionAdd', (reaction, user) => {
 bot.on('messageReactionRemove', (reaction, user) => {
   var msg = reaction.message.content;
   var gfyName = getGfyPath(msg);
+
   if(!isGYG(gfyName) || user.id == bot.user.id)
     return;
 
-  // console.log(user.username + " removed reaction " + reaction.emoji.name + " to " + gifId);
   if(reaction.emoji.name === "👍")
     removeLike(user.id, gfyName).then(function(){
-      updateNumbersInMessage(reaction.message);
+      console.log('emoji removed');
+      updateNumbersInChannel(reaction.message);
     });
   else if(reaction.emoji.name === "👎")
     removeDislike(user.id, gfyName).then(function(){
-      updateNumbersInMessage(reaction.message);
+      console.log('emoji removed');
+      updateNumbersInChannel(reaction.message);
     });
 });
 
@@ -215,6 +217,9 @@ function messageResponse(message){
       }
     });
   }
+  // if(command === "update") {
+  //   updateNumbersInChannel(message);
+  // }
 }
 
 
@@ -241,20 +246,31 @@ function getGfyPath(message) {
   return undefined;
 }
 
-function updateNumbersInChannel(channel){
-  // channel.
+function updateNumbersInChannel(message){
+  console.log("Updating channel "+message.channel.id);
+  message.channel.fetchMessages({around: message.id, limit: 100}).then(messages => {
+    var msgArr = messages.array();
+    msgArr.forEach(function(msg){
+      updateNumbersInMessage(msg);
+    })
+  })
 }
+
+
 function updateNumbersInMessage(message){
-  console.log("Update Message")
   if(bot.user.id == message.author.id){
     var gfyId = getGfyPath(message.content);
+    if(!gfyId || gfyId === 'undefined'){
+      return;
+    }
+    // console.log("... Update Message '"+ gfyId +"'" )
 
     Parse.Promise.when(getGifById(gfyId)).then(function(gif){
-      console.log("... \t", gif.gif);
+      // console.log("... Message: \t", gif.gif, ":", gif.score);
       message.edit(stringifyGif(gif));
     });
   }else{
-    console.log("...\tThat message is by another author")
+    // console.log("...\tThat message is by another author", message.content)
   }
 
 }
@@ -277,32 +293,17 @@ function stringifyGif(gif){
   return aStr;
 }
 
-function setupLeaderboard(channel){
-  // getTopLikedGifs(10).then(function(gifs){
-  //   channel.bulkDelete(50);
-  //   for(var i = 0; i < gifs.length; i++){
-  //     var gif = gifs[i];
-  //     // console.log(("Gif#"+i),gif);
-  //     channel.send("\n***#"+(i+1)+"***");
-  //     var a = stringifyGif(gifs[i]);
-  //     channel.send(a);
-  //   }
-  // })
-  // var leaderBoardUpdater = Schedule.scheduleJob('*/5 * * * *', function(){
-  //   console.log("Updating Leaderboard for channel", channel.id);
-  //   channel.send("UPDATING");
-  //   getTopLikedGifs(10).then(function(gifs){
-  //     channel.bulkDelete(50);
-  //     for(var i = 0; i < gifs.length; i++){
-  //       var gif = gifs[i];
-  //       // console.log(("Gif#"+i),gif);
-  //       channel.send("\n***#"+(i+1)+"***");
-  //       var a = stringifyGif(gifs[i]);
-  //       channel.send(a);
-  //     }
-  //   })
-  // });
-  // scheduledJobs[channel.id] = (leaderBoardUpdater);
+function reloadLeaderboard(channel){
+  getTopLikedGifs(10).then(function(gifs){
+    channel.bulkDelete(50);
+    for(var i = 0; i < gifs.length; i++){
+      var gif = gifs[i];
+      // console.log(("Gif#"+i),gif);
+      channel.send("\n***#"+(i+1)+"***");
+      var a = stringifyGif(gifs[i]);
+      channel.send(a);
+    }
+  })
 }
 function removeLeaderboard(channel){
   console.log(scheduledJobs);

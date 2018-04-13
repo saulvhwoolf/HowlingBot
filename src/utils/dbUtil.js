@@ -46,9 +46,12 @@ function updateArray(gifId, discordId, arrayName, updateType){
       gif.set(arrayName, []);
     }
 
+    var user = gif.get('user');
+
+
     if(updateType == "add")
       gif.addUnique(arrayName, discordId)
-    else if(updateType == "remove")
+    if(updateType == "remove")
       gif.remove(arrayName, discordId)
 
     var likeScore = 0;
@@ -58,10 +61,31 @@ function updateArray(gifId, discordId, arrayName, updateType){
       likeScore-=gif.get("dislikesArray").length;
     gif.set("score", likeScore)
 
+    updateUserScores(user, gif.get("gif"), likeScore);
+
     gif.save(null, {useMasterKey:true})
     console.log("...\t"+arrayName+"->", gif.get(arrayName));
     return gif;
   })
+}
+
+function updateUserScores(user, gfyId, score){
+  if(!user.get("gifScores")){
+    user.set("gifScores", {});
+  }
+  if(!user.get("score")){
+    user.set("score", 0);
+  }
+  var scores = user.get("gifScores");
+  scores[gfyId] = score;
+  var sum = 0;
+  for(var key of Object.keys(scores)){
+    sum += scores[key];
+  }
+  user.set("gifScores", scores);
+  user.set("score", sum);
+  console.log("...\t"+ user.get("name") + " now has a score of " + user.get("score"))
+  user.save(null, {useMasterKey:true});
 }
 
 exports.getRandomGif = function(){
